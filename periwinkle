@@ -419,7 +419,8 @@ pw_SpawnNotification() {
 
 	pw_NotificationID=27072
 
-	if [ "$pw_CurrentOperatingSystem" = "Darwin" ]; then
+	case $pw_CurrentOperatingSystem in
+		"Darwin")
 		NotificationActionSelected="$(alerter	-title "$1" \
 												-subtitle "$2" \
 												-message "$3" \
@@ -427,14 +428,17 @@ pw_SpawnNotification() {
 												-group "$pw_NotificationID" \
 												-sender "$pw_NotificationID" \
 												-timeout "$(($Notify_Timeout / 1000))")"
-	else
+		;;
+		
+		*)
 		NotificationActionSelected=$(notify-send	-a "Periwinkle" \
 													-t "$Notify_Timeout" \
 													-u low \
 													-r "$pw_NotificationID" "$1" "$2\n$3" \
 													-i "$4" \
-													--action open=Show "$OPPSTATUS"="$OPPSTATUS")
-	fi
+													--action open=Show 2>/dev/null)
+		;;
+	esac
 
 	if    [ -z "$NotificationActionSelected" ] \
 	   || [ "$NotificationActionSelected" = "@TIMEOUT" ] \
@@ -442,19 +446,11 @@ pw_SpawnNotification() {
 		return 0
 
 	elif [ -s /tmp/pw_daemonmode ]; then
-
-		if [ "$NotificationActionSelected" = "$OPPSTATUS" ] || [ "$NotificationActionSelected" = "forward" ] || [ "$NotificationActionSelected" = "Forward" ]; then
-			pw_UserSelection "$NotificationActionSelected"
-			return 0
-		fi
 		pw_MenuOptions daemon
-
-	elif [ "$NotificationActionSelected" = "$OPPSTATUS" ] || [ "$NotificationActionSelected" = "forward" ] || [ "$NotificationActionSelected" = "Forward" ]; then
-		pw_UserSelection "$NotificationActionSelected"
-		return 0
 
 	else
 		pw_MenuOptions "$NotificationActionSelected"
+
 	fi
 		
 }
@@ -473,7 +469,7 @@ pw_MPDCommand() {
 }
 
 pw_ReloadMetadata() {
-
+	
 	case $1 in
 		"OnlineStatus")
 			pw_MPDCommand console > /dev/null 2>&1
@@ -596,6 +592,7 @@ pw_ReloadMetadata() {
 	esac
 
 	return 
+	
 }
 
 pw_Refresh() {
@@ -746,34 +743,12 @@ pw_UserSelection() {
 
 			;;
 
-		"seek" | "volume" | "setvol" | "vol" | "crossfade")
-			SELECTED=$1
-			INTEGER=$2	
-			pw_MenuOptions integer;;
-
-		"cli" | "CLI")
-			shift
-			CALLED_CMD=$*
-			pw_MenuOptions cli "$CALLED_CMD";;
-
-		"single" | "random" | "repeat" | "consume")
-			CALLED_CMD="$1"
-			pw_MenuOptions boolean "$2";;
-
-		"clear")
-			CALLED_CMD="$1"
-			pw_MenuOptions confirm "$2";;
-
-		"update" | "shuffle")
-			pw_CLICommand "$1";;
-
 		*) 
 			prompt="";;
 
 	esac
 
 	pw_Refresh
-	pw_SpawnNotification_Shortcut
 }
 
 pw_SpawnNotification_Shortcut() {
@@ -792,76 +767,87 @@ pw_SpawnNotification_Shortcut() {
 pw_MenuOptions() {
 	# Different dmenu routines
 	sleep 0.1
-	pw_Refresh
-	case $1 in
-	# Daemon option
-		"daemon")
-		# Sleep to mitigate some race conditions
 
-			if [ "$pw_MPDIsOnline" = "false" ]; then
-				mpd="Close"
-			elif [ -z "$OPPSTATUS2" ]; then
-				mpd=':'"$OPPSTATUS"'::seek:setvol:single:random:repeat:consume:clear:update:shuffle:crossfade'
-			else
-				mpd=':'"$OPPSTATUS:$OPPSTATUS2"'::seek:setvol:single:random:repeat:consume:clear:update:shuffle:crossfade'
-			fi
+    while [ "$SelectedOption" != "Close" ]
+    do
+        # Get the arguments for the option if the user typed any
+        case "$SelectedOption" in
+            *" "*) SelectedOptionArguments=${SelectedOption#* } ;;
+            *)     SelectedOptionArguments="" ;;
+        esac
 
-			if [ "$CLI" = True ]; then
-				exit 0
-			fi
+        # Then assign the first option as the selected option..
+        SelectedOption=${SelectedOption%% *}
+
+        case $SelectedOption in
+	    # Daemon option
+		    "daemon")
+		    # Sleep to mitigate some race conditions
+
+			    if [ "$pw_MPDIsOnline" = "false" ]; then
+				    mpd="Close"
+			    elif [ -z "$OPPSTATUS2" ]; then
+				    mpd=':'"$OPPSTATUS"'::seek:setvol:single:random:repeat:consume:clear:update:shuffle:crossfade'
+			    else
+				    mpd=':'"$OPPSTATUS:$OPPSTATUS2"'::seek:setvol:single:random:repeat:consume:clear:update:shuffle:crossfade'
+			    fi
+
+			    if [ "$CLI" = True ]; then
+				    exit 0
+			    fi
 	
-			if [ "$pw_MPDIsOnline" = "false" ]; then
-				if [ "$UseNerdFont" = "false" ]; then
-					DMENU_TITLE="Offline"
-				else
-					DMENU_TITLE="$NOTIFYSEND_STATUS Offline"
-				fi
-			elif [ -z "$mpc_file" ]; then
-				if [ "$UseNerdFont" = "false" ]; then
-					DMENU_TITLE="Stopped"
-				else
-					DMENU_TITLE="$NOTIFYSEND_STATUS Stopped"
-				fi
+			    if [ "$pw_MPDIsOnline" = "false" ]; then
+				    if [ "$UseNerdFont" = "false" ]; then
+					    DMENU_TITLE="Offline"
+				    else
+					    DMENU_TITLE="$NOTIFYSEND_STATUS Offline"
+				    fi
+			    elif [ -z "$mpc_file" ]; then
+				    if [ "$UseNerdFont" = "false" ]; then
+					    DMENU_TITLE="Stopped"
+				    else
+					    DMENU_TITLE="$NOTIFYSEND_STATUS Stopped"
+				    fi
 
-			else
-				if [ "$UseNerdFont" = "false" ]; then
-					DMENU_TITLE="$NOTIFYSEND_STATUS: "'"'"$title"'"'" by $artist"
-				else
-					DMENU_TITLE="$NOTIFYSEND_STATUS "'"'"$title"'"'" by $artist"
-				fi
-			fi
+			    else
+				    if [ "$UseNerdFont" = "false" ]; then
+					    DMENU_TITLE="$NOTIFYSEND_STATUS: "'"'"$title"'"'" by $artist"
+				    else
+				    	DMENU_TITLE="$NOTIFYSEND_STATUS "'"'"$title"'"'" by $artist"
+			    	fi
+		    	fi
 
-			# Show dmenu with the controls
-			if [ -s /tmp/pw_daemonmode ]; then	
-				prompt="$(printf '%s\n' "$mpd" | tr ':' '\n' | pw_SpawnMenu)"
-				pw_UserSelection "$prompt" &
-			fi
+	    		# Show dmenu with the controls
+    			if [ -s /tmp/pw_daemonmode ]; then	
+		    		prompt="$(printf '%s\n' "$mpd" | tr ':' '\n' | pw_SpawnMenu)"
+	    			SelectedOption=$prompt
+    			fi
 
-			if [ -z "$prompt" ]; then
-				return 0
-			else
-				pw_MenuOptions daemon
-			fi
-			;;
+		    	if [ -z "$prompt" ]; then
+	    			SelectedOption="Close"
+    			else
+		    		SelectedOption="daemon"
+	    		fi
+    			;;
 
-		# Different commands
-		"integer")
+	    	# Different commands
+    		"setvol" | "vol" | "volume" | "crossfade" | "seek")
 		
-			case $SELECTED in
-				"setvol" | "Setvol" | "vol" | "Vol" | "volume")
-					DMENU_TITLE='Set volume (0-100)'
-					SELECTED="setvol";;
-				"seek" | "Seek")
-					DMENU_TITLE='Seek to where?'
-					SELECTED="seek";;
-				"crossfade")
-					DMENU_TITLE='Set crossfade:'
-					SELECTED="crossfade";;
-			esac
+			    case $SelectedOption in
+				    "setvol" | "Setvol" | "vol" | "Vol" | "volume")
+					    DMENU_TITLE='Set volume (0-100)'
+					    SelectedOption="setvol";;
+				    "seek" | "Seek")
+					    DMENU_TITLE='Seek to where?'
+					    SelectedOption="seek";;
+				    "crossfade")
+					    DMENU_TITLE='Set crossfade:'
+				    	SelectedOption="crossfade";;
+			    esac
 
-			if [ -z "$INTEGER" ]; then
-				if [ "$pw_CurrentOperatingSystem" = "Darwin" ]; then
-					Darwin_InsertBoxDialog=$(cat <<EOF
+			    if [ -z "$SelectedOptionArguments" ]; then
+				    if [ "$pw_CurrentOperatingSystem" = "Darwin" ]; then
+			    		Darwin_InsertBoxDialog=$(cat <<EOF
 set userInput to display dialog "$DMENU_TITLE" default answer "" buttons {"Cancel", "OK"} default button "OK"
 
 if button returned of userInput is "Cancel" then
@@ -878,124 +864,133 @@ end if
 
 return result
 EOF
-		)
-					prompt=$(osascript -e "$Darwin_InsertBoxDialog")
-				else
-					prompt=$(printf "Cancel" | pw_SpawnMenu)
+		    )
+					    prompt=$(osascript -e "$Darwin_InsertBoxDialog")
+				    else
+					    prompt=$(printf "Cancel" | pw_SpawnMenu)
+				    fi
+
+				    if [ "$prompt" != "Cancel" ]; then
+					    pw_CLICommand "$SelectedOption" "$prompt"
+				    fi
+
+			    elif [ -n "$SelectedOptionArguments" ]; then
+				    pw_CLICommand "$SelectedOption" "$SelectedOptionArguments"
+			    fi
+                
+				pw_Refresh
+                SelectedOption="MainMenu";;
+
+
+		    "single" | "random" | "consume")
+			    case $SelectedOption in
+				    "single")
+					    mpd="0:1:oneshot:Cancel";;
+				    *)
+				    	mpd="0:1:Cancel";;
+			    esac
+
+			    if [ -z "$SelectedOptionArguments" ]; then
+				    DMENU_TITLE="Set boolean for $SelectedOption"
+				    prompt="$(printf '%s\n' "$mpd" | tr ':' '\n' | pw_SpawnMenu)"
+				    pw_CLICommand "$SelectedOption" "$prompt"
+
+			    elif [ -n "$SelectedOptionArguments" ]; then
+				    pw_CLICommand "$SelectedOption" "$SelectedOptionArguments"
+			    fi
+
+				pw_Refresh
+                SelectedOption="MainMenu"
+                ;;
+
+		    "clear")
+			    mpd="Yes:No"
+			    DMENU_TITLE="Are you sure you want to clear the playlist?"
+			    prompt="$(printf '%s\n' "$mpd" | tr ':' '\n' | pw_SpawnMenu)"
+
+			    if [ $prompt == "Yes" ]; then
+					pw_CLICommand "SelectedOption"
 				fi
 
-				if [ "$prompt" != "Cancel" ]; then
-					pw_CLICommand "$SELECTED" "$prompt"
-				fi
-				return 0
+				pw_Refresh
+			    SelectedOption="MainMenu";;
 
-			elif [ -n "$INTEGER" ]; then
-				pw_CLICommand "$SELECTED" "$INTEGER"
-				return 0
-			fi;;
+		    "CLI" | "cli")
+			    DMENU_TITLE='Periwinkle:'
 
-		"boolean")
-			case $CALLED_CMD in
-				"single")
-					mpd="0:1:oneshot:Cancel";;
-				*)
-					mpd="0:1:Cancel";;
-			esac
+			    if [ -z "$SelectedOptionArguments" ]; then
+				    prompt=$(pw_SpawnMenu)
+				    pw_CLICommand "$prompt"
 
-			if [ -z "$2" ]; then
-				DMENU_TITLE="Set boolean for $CALLED_CMD"
-				prompt="$(printf '%s\n' "$mpd" | tr ':' '\n' | pw_SpawnMenu)"
-
-				if [ -z "$prompt" ] || [ "$prompt" = "[Cancel]" ] || [ "$prompt" = "Cancel" ]; then
-					pw_CLICommand menu
-					return 0
-				fi
-				pw_CLICommand "$CALLED_CMD" "$prompt"
-
-			elif [ -n "$2" ]; then
-				theinput2="$2"
-				pw_CLICommand "$CALLED_CMD" "$theinput2"
-			fi;;
-
-		"confirm")
-			mpd="Yes:No"
-			DMENU_TITLE="Are you sure you want to clear the playlist?"
-			prompt="$(printf '%s\n' "$mpd" | tr ':' '\n' | pw_SpawnMenu)"
-
-			case $prompt in
-				"Yes")
-					pw_CLICommand "$CALLED_CMD";;
-				"No")
-					prompt="";;
-			esac
-
-			if [ -z "$prompt" ]; then
-				pw_CLICommand menu
-				return 0
-			fi;;
-
-		"CLI" | "cli")
-			DMENU_TITLE='Periwinkle:'
-
-			if [ -z "$CALLED_CMD" ]; then
-				prompt=$(pw_SpawnMenu)
-				pw_CLICommand "$prompt"
-
-			elif [ -n "$CALLED_CMD" ]; then
-				pw_CLICommand "$CALLED_CMD"
-			fi;;
-
-		# No arguments
-		"open" | "Open" | "@ACTIONCLICKED")
-
-		# Show dmenu with the controls
+			    elif [ -n "$SelectedOptionArguments" ]; then
+				    pw_CLICommand "$SelectedOptionArguments"
+			    fi
+				
+				pw_Refresh
+				SelectedOption="MainMenu"
+				;;
 			
-			if [ "$UseNerdFont" = true ]; then
-				PreviousIcon=""
-				ForwardIcon=""
-			else
-				PreviousIcon="Previous"
-				ForwardIcon="Next"
-			fi
+			"$PreviousIcon" | "$OPPSTATUS" | "$OPPSTATUS2" | "$ForwardIcon")
+				
+					
+				pw_UserSelection "$SelectedOption"
 
-			if [ "$pw_MPDIsOnline" = "false" ]; then
-				mpd="Close"
-			elif [ -z "$OPPSTATUS2" ]; then
-				mpd="$PreviousIcon"':'"$OPPSTATUS"':'"$ForwardIcon"':seek:setvol:single:random:repeat:consume:clear:update:shuffle:crossfade:Close'
+				pw_Refresh
+				SelectedOption="MainMenu";;
 
-			else
-				mpd="$PreviousIcon"':'"$OPPSTATUS:$OPPSTATUS2"':'"$ForwardIcon"':seek:setvol:single:random:repeat:consume:clear:update:shuffle:crossfade:Close'
-			fi
+		    # No arguments
+		    "MainMenu")
 
-			if [ "$pw_MPDIsOnline" = "false" ]; then
-				if [ "$UseNerdFont" = "false" ]; then
-					DMENU_TITLE="Offline"
-				else
-					DMENU_TITLE="$NOTIFYSEND_STATUS Offline"
-				fi
-			elif [ -z "$mpc_file" ]; then
-				if [ "$UseNerdFont" = "false" ]; then
-					DMENU_TITLE="Stopped"
-				else
-					DMENU_TITLE="$NOTIFYSEND_STATUS Stopped"
-				fi
+		    # Show dmenu with the controls
+			
+			    if [ "$UseNerdFont" = true ]; then
+				    PreviousIcon=""
+				    ForwardIcon=""
+			    else
+				    PreviousIcon="Previous"
+				    ForwardIcon="Next"
+			    fi
 
-			else
-				if [ "$UseNerdFont" = "false" ]; then
-					DMENU_TITLE="$NOTIFYSEND_STATUS: "'"'"$title"'"'" by $artist"
-				else
-					DMENU_TITLE="$NOTIFYSEND_STATUS "'"'"$title"'"'" by $artist"
-				fi
-			fi
+			    if [ "$pw_MPDIsOnline" = "false" ]; then
+				    mpd="Close"
+			    elif [ -z "$OPPSTATUS2" ]; then
+				    mpd="$PreviousIcon"':'"$OPPSTATUS"':'"$ForwardIcon"':seek:setvol:single:random:repeat:consume:clear:update:shuffle:crossfade:Close'
 
-			prompt="$(printf '%s\n' "$mpd" | tr ':' '\n' | pw_SpawnMenu)"
-			pw_UserSelection "$prompt"
-			if [ -z "$prompt" ]; then
-				exit 0
-			else
-				pw_MenuOptions Open
-			fi;;
-	esac
+			    else
+				    mpd="$PreviousIcon"':'"$OPPSTATUS:$OPPSTATUS2"':'"$ForwardIcon"':seek:setvol:single:random:repeat:consume:clear:update:shuffle:crossfade:Close'
+			    fi
+
+			    if [ "$pw_MPDIsOnline" = "false" ]; then
+				    if [ "$UseNerdFont" = "false" ]; then
+					    DMENU_TITLE="Offline"
+				    else
+					    DMENU_TITLE="$NOTIFYSEND_STATUS Offline"
+				    fi
+			    elif [ -z "$mpc_file" ]; then
+				    if [ "$UseNerdFont" = "false" ]; then
+					    DMENU_TITLE="Stopped"
+				    else
+					    DMENU_TITLE="$NOTIFYSEND_STATUS Stopped"
+				    fi
+
+			    else
+				    if [ "$UseNerdFont" = "false" ]; then
+					    DMENU_TITLE="$NOTIFYSEND_STATUS: "'"'"$title"'"'" by $artist"
+				    else
+					    DMENU_TITLE="$NOTIFYSEND_STATUS "'"'"$title"'"'" by $artist"
+				    fi
+			    fi
+
+			    prompt="$(printf '%s\n' "$mpd" | tr ':' '\n' | pw_SpawnMenu)"
+			    SelectedOption=$prompt
+			    if [ -z "$prompt" ]; then
+				    SelectedOption="Close"
+			    fi
+                ;;
+	    esac
+
+    done
+	
 }
 
 pw_QuitDaemon() {
@@ -1145,7 +1140,7 @@ pw_CLICommand() {
 			CLI=True
 			pw_UserSelection "$1";;
 
-		"menu") pw_MenuOptions open &;;
+		"menu") pw_MenuOptions MainMenu &;;
 
 		"daemon") pw_PeriwinkleDaemon;;
 
