@@ -87,10 +87,6 @@
 
 #Notify_Timeout=5
 
-# Show extra control buttons in the popup
-
-#Notify_ExtraButtons=true
-
 # Format the notification
 # Set the appearance of the notification to your liking.
 # Side note: %datep% is a variant of %date%, what it does is that if the metadata doesn't contain any date, it hides the parenthesis. Otherwise, if it contains a year, it shows them.
@@ -420,33 +416,24 @@ pw_SpawnNotification() {
 	# $2 = Subtitle 
 	# $3 = Message
 	# $4 = Icon
-	# $5 = Extra Option (optional)
+
+	pw_NotificationID=27072
 
 	if [ "$pw_CurrentOperatingSystem" = "Darwin" ]; then
-		NotificationActionSelected="$(alerter -title "$1" \
-											  -subtitle "$2" \
-											  -message "$3" \
-											  -contentImage "$4" \
-											  -group 27072 \
-											  -sender 27072 \
-											  -actions "Show" \
-											  -timeout "$(($Notify_Timeout / 1000))")"
+		NotificationActionSelected="$(alerter	-title "$1" \
+												-subtitle "$2" \
+												-message "$3" \
+												-contentImage "$4" \
+												-group "$pw_NotificationID" \
+												-sender "$pw_NotificationID" \
+												-timeout "$(($Notify_Timeout / 1000))")"
 	else
-		if [ -n "$5" ] || [ "$5" = "" ]; then
-			NotificationActionSelected=$(notify-send -a "Periwinkle" \
-													 -t "$Notify_Timeout" \
-													 -u low \
-													 -r 27072 "$1" "$2\n$3" \
-													 -i "$4" \
-													 --action open=Show "$5")
-		else
-			NotificationActionSelected=$(notify-send -a "Periwinkle" \
-													 -t "$Notify_Timeout" \
-													 -u low \
-													 -r 27072 "$1" "$2\n$3" \
-													 -i "$4" \
-													 --action open=Show)
-		fi
+		NotificationActionSelected=$(notify-send	-a "Periwinkle" \
+													-t "$Notify_Timeout" \
+													-u low \
+													-r "$pw_NotificationID" "$1" "$2\n$3" \
+													-i "$4" \
+													--action open=Show "$OPPSTATUS"="$OPPSTATUS")
 	fi
 
 	if    [ -z "$NotificationActionSelected" ] \
@@ -456,13 +443,13 @@ pw_SpawnNotification() {
 
 	elif [ -s /tmp/pw_daemonmode ]; then
 
-		if [ "$NotificationActionSelected" = "$OPPSTATUS" ] || [ "$NotificationActionSelected" = "forward" ]; then
+		if [ "$NotificationActionSelected" = "$OPPSTATUS" ] || [ "$NotificationActionSelected" = "forward" ] || [ "$NotificationActionSelected" = "Forward" ]; then
 			pw_UserSelection "$NotificationActionSelected"
 			return 0
 		fi
 		pw_MenuOptions daemon
 
-	elif [ "$NotificationActionSelected" = "$OPPSTATUS" ] || [ "$NotificationActionSelected" = "forward" ]; then
+	elif [ "$NotificationActionSelected" = "$OPPSTATUS" ] || [ "$NotificationActionSelected" = "forward" ] || [ "$NotificationActionSelected" = "Forward" ]; then
 		pw_UserSelection "$NotificationActionSelected"
 		return 0
 
@@ -556,7 +543,7 @@ pw_ReloadMetadata() {
 						OPPSTATUS="Play"
 						OPPSTATUS2="Stop"
 					elif [ "$state" = "play" ]; then
-						NOTIFYSEND_STATUS="Now Playing"
+						NOTIFYSEND_STATUS="Playing"
 						OPPSTATUS="Pause"
 						OPPSTATUS2="Stop"
 					fi
@@ -798,7 +785,7 @@ pw_SpawnNotification_Shortcut() {
 		NOTIFICATIONACTION="--action ""$OPPSTATUS"="$OPPSTATUS"" --action forward="	
 	fi
 
-	pw_SpawnNotification "$(pw_Print "$Notify_TitlePlay")" "$(pw_Print "$Notify_Line1Play")" "$(pw_Print "$Notify_Line2Play")" "$previewname" "$NOTIFICATIONACTION" &
+	pw_SpawnNotification "$(pw_Print "$Notify_TitlePlay")" "$(pw_Print "$Notify_Line1Play")" "$(pw_Print "$Notify_Line2Play")" "$previewname" "$OPPSTATUS" &
 	return
 }
 
