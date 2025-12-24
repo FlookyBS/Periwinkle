@@ -512,6 +512,9 @@ pw_ReloadMetadata() {
 		"SongId")
 			songid="$(printf "%s" "$stats2" | awk -F ': ' '/^song:/ { sub(/^song: /, ""); print }')";;
 
+    	"TimeElapsed")
+       timeelapsed="$(printf "%s" "$stats2" | awk -F ': ' '/^elapsed:/ { sub(/^elapsed: /, ""); print }')";;
+
 		"State")
 			state="$(printf "%s" "$stats2" | awk -F ': ' '/^state:/ { sub(/^state: /, ""); print }')"
 			if [ "$pw_MPDIsOnline" = "true" ]; then
@@ -588,6 +591,7 @@ pw_ReloadMetadata() {
 			pw_ReloadMetadata Date
 			pw_ReloadMetadata SongId
 			pw_ReloadMetadata State
+			pw_ReloadMetadata TimeElapsed
 			pw_ReloadMetadata SetAlbumCover;;
 	esac
 
@@ -1113,8 +1117,9 @@ pw_Print() {
 													   -v stateiconvar="$NOTIFYSEND_STATUS" \
 													   -v songidvar="$songid" \
 													   -v filenamevar="$mpc_file" \
-													   -v dirvar="$filename" '{
-	 gsub(/%title%/, titlevar);
+													   -v dirvar="$filename" \
+                            						   -v timevar="$timeelapsed" '{
+	  gsub(/%title%/, titlevar);
 	  gsub(/%artist%/, artistvar);
 	  gsub(/%album%/, albumvar);
 	  gsub(/%date%/, datevar);
@@ -1124,6 +1129,7 @@ pw_Print() {
 	  gsub(/%songid%/, songidvar);
 	  gsub(/%filename%/, filenamevar);
 	  gsub(/%dir%/, dirvar);
+      gsub(/%time%/, timevar);
 	  print;
 	}')
 	printf "%s" "$output_text"
