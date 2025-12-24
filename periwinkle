@@ -514,9 +514,13 @@ pw_ReloadMetadata() {
 
     	"Time")
         rawtimevar="$(printf "%s" "$stats2" | awk -F ': ' '/^time:/ { sub(/^time: /, ""); print }')"
+		totalduration="$(printf "%s" "$stats" | awk -F ': ' '/^Time:/ { sub(/^Time: /, ""); print }')"
 
-	    elapsedtime="${rawtimevar%:*}"   # part before colon
-		totalduration="${rawtimevar#*:}"     # part after colon
+		if [ -z "$rawtimevar" ] && [ -n "$totalduration" ]; then
+			elapsedtime=0
+		else
+			elapsedtime="${rawtimevar%:*}"   # part before colon
+		fi
 		;;
 
 		"State")
