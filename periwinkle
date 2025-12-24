@@ -512,8 +512,12 @@ pw_ReloadMetadata() {
 		"SongId")
 			songid="$(printf "%s" "$stats2" | awk -F ': ' '/^song:/ { sub(/^song: /, ""); print }')";;
 
-    	"TimeElapsed")
-       timeelapsed="$(printf "%s" "$stats2" | awk -F ': ' '/^elapsed:/ { sub(/^elapsed: /, ""); print }')";;
+    	"Time")
+        rawtimevar="$(printf "%s" "$stats2" | awk -F ': ' '/^time:/ { sub(/^time: /, ""); print }')"
+
+	    elapsedtime="${rawtimevar%:*}"   # part before colon
+		totalduration="${rawtimevar#*:}"     # part after colon
+		;;
 
 		"State")
 			state="$(printf "%s" "$stats2" | awk -F ': ' '/^state:/ { sub(/^state: /, ""); print }')"
@@ -591,7 +595,7 @@ pw_ReloadMetadata() {
 			pw_ReloadMetadata Date
 			pw_ReloadMetadata SongId
 			pw_ReloadMetadata State
-			pw_ReloadMetadata TimeElapsed
+			pw_ReloadMetadata Time
 			pw_ReloadMetadata SetAlbumCover;;
 	esac
 
@@ -1118,7 +1122,8 @@ pw_Print() {
 													   -v songidvar="$songid" \
 													   -v filenamevar="$mpc_file" \
 													   -v dirvar="$filename" \
-                            						   -v timevar="$timeelapsed" '{
+													   -v durationvar="$totalduration" \
+                            						   -v timevar="$elapsedtime" '{
 	  gsub(/%title%/, titlevar);
 	  gsub(/%artist%/, artistvar);
 	  gsub(/%album%/, albumvar);
@@ -1130,6 +1135,7 @@ pw_Print() {
 	  gsub(/%filename%/, filenamevar);
 	  gsub(/%dir%/, dirvar);
       gsub(/%time%/, timevar);
+	  gsub(/%duration%/, durationvar);
 	  print;
 	}')
 	printf "%s" "$output_text"
