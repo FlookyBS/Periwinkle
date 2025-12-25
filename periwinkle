@@ -558,13 +558,12 @@ pw_ReloadMetadata() {
 			else
 				if [ "$UseNerdFont" = "true" ]; then
 					NOTIFYSEND_STATUS=""
-					OPPSTATUS=""
-					OPPSTATUS2=""
 				else
 					NOTIFYSEND_STATUS="Offline"
-					OPPSTATUS=""
-					OPPSTATUS2=""
 				fi
+        OPPSTATUS=""
+        OPPSTATUS2=""
+        state="offline"
 			fi;;
 
 		"RefreshVariables")
